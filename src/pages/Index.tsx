@@ -10,8 +10,8 @@ import {
   getUserDetails, 
   findRelevantLaws
 } from "@/utils/api";
-import { getCachedLawsData } from "@/utils/lawsFetcher";
-import { Search, Save, LogIn, UserCheck, Loader2 } from "lucide-react";
+import { fetchLaws, parseLawsFromHtml, cacheLawsData, getCachedLawsData } from "@/utils/lawsFetcher";
+import { Search, Save, LogIn, UserCheck, Loader2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 
@@ -21,6 +21,7 @@ const Index = () => {
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [lawsData, setLawsData] = useState<any>(null);
+  const [loadingLaws, setLoadingLaws] = useState(false);
 
   useEffect(() => {
     // Check if user is logged in
@@ -33,13 +34,36 @@ const Index = () => {
       }
     }
 
-    // Try to load cached laws data
+    // Try to load cached laws data or fetch new data
+    loadLawsData();
+  }, []);
+
+  const loadLawsData = async () => {
+    // First try to get from cache
     const cachedLaws = getCachedLawsData();
     if (cachedLaws) {
       setLawsData(cachedLaws);
       console.log("Loaded laws from cache");
+      return;
     }
-  }, []);
+
+    // If not in cache, fetch from API
+    try {
+      setLoadingLaws(true);
+      const htmlLaws = await fetchLaws();
+      if (typeof htmlLaws === 'string') {
+        const parsedLaws = parseLawsFromHtml(htmlLaws);
+        setLawsData(parsedLaws);
+        cacheLawsData(parsedLaws);
+        console.log("Fetched and cached laws data");
+      }
+    } catch (error) {
+      console.error("Error loading laws:", error);
+      toast.error("שגיאה בטעינת מאגר החוקים");
+    } finally {
+      setLoadingLaws(false);
+    }
+  };
 
   const handleSearch = async () => {
     if (!query.trim()) {
@@ -89,6 +113,22 @@ const Index = () => {
         <p className="text-lg text-muted-foreground">
           הזן את המקרה שלך וקבל ניתוח משפטי מבוסס בינה מלאכותית
         </p>
+        
+        <div className="flex items-center justify-center mt-3 gap-2">
+          {loadingLaws ? (
+            <div className="text-sm text-muted-foreground flex items-center gap-1">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              טוען מאגר חוקים...
+            </div>
+          ) : (
+            lawsData && (
+              <div className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
+                <BookOpen className="w-3 h-3" />
+                מחובר למאגר החוקים המלא
+              </div>
+            )
+          )}
+        </div>
         
         {!user && (
           <motion.div 

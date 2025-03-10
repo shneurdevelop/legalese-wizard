@@ -15,7 +15,8 @@ export async function fetchLaws() {
           prop: "text",
           // Adding new parameters to get more complete data
           redirects: true,
-          section: "all"
+          section: "all",
+          disabletoc: true
         }
       }
     );
@@ -51,7 +52,7 @@ export function parseLawsFromHtml(html: string) {
   const doc = parser.parseFromString(html, "text/html");
   
   // Extract law categories and content with improved selectors
-  const lawSections = doc.querySelectorAll('.mw-parser-output > h2, .mw-parser-output > h3, .mw-parser-output > p, .mw-parser-output > div > p, .mw-parser-output > ul, .mw-parser-output > div > ul');
+  const lawSections = doc.querySelectorAll('.mw-parser-output > h2, .mw-parser-output > h3, .mw-parser-output > p, .mw-parser-output > div > p, .mw-parser-output > ul, .mw-parser-output > div > ul, .mw-parser-output > div > div > p');
   
   const lawData: Record<string, Record<string, Record<string, string>>> = {};
   let currentCategory = "";
@@ -72,7 +73,7 @@ export function parseLawsFromHtml(html: string) {
       const content = section.textContent?.trim() || "";
       if (content) {
         // Check for section header patterns with more variations
-        const sectionMatch = content.match(/^(סעיף \d+[א-ת]?|פרק [א-ת]+|חלק [א-ת\']+)[:\.]\s*(.*)/);
+        const sectionMatch = content.match(/^(סעיף \d+[א-ת]?|פרק [א-ת\']+|חלק [א-ת\']+)[:\.]\s*(.*)/);
         if (sectionMatch) {
           const [, sectionId, sectionContent] = sectionMatch;
           lawData[currentCategory][currentLaw][sectionId] = cleanLawText(sectionContent.trim());
@@ -83,6 +84,9 @@ export function parseLawsFromHtml(html: string) {
             const [, itemId, itemContent] = itemMatch;
             lawData[currentCategory][currentLaw][itemId] = cleanLawText(itemContent.trim());
           }
+        } else if (!Object.keys(lawData[currentCategory][currentLaw]).length) {
+          // If this is the first content for this law and doesn't match patterns, add as general content
+          lawData[currentCategory][currentLaw]["תוכן כללי"] = cleanLawText(content);
         }
       }
     }
