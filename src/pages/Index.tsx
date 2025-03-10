@@ -1,17 +1,31 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { getLegalAnalysis, saveToHistory } from "@/utils/api";
-import { Search, Save } from "lucide-react";
+import { Search, Save, LogIn } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   const [query, setQuery] = useState("");
   const [response, setResponse] = useState("");
   const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    // Check if user is logged in
+    const userJson = localStorage.getItem("lawai-user");
+    if (userJson) {
+      try {
+        setUser(JSON.parse(userJson));
+      } catch (e) {
+        console.error("Error parsing user data:", e);
+      }
+    }
+  }, []);
 
   const handleSearch = async () => {
     if (!query.trim()) {
@@ -48,6 +62,33 @@ const Index = () => {
         <p className="text-lg text-muted-foreground">
           הזן את המקרה שלך וקבל ניתוח משפטי מבוסס בינה מלאכותית
         </p>
+        
+        {!user && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="mt-4"
+          >
+            <Link to="/login">
+              <Button variant="outline" className="gap-2">
+                <LogIn className="w-4 h-4" />
+                התחבר למערכת
+              </Button>
+            </Link>
+          </motion.div>
+        )}
+        
+        {user && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="mt-4 text-sm text-muted-foreground"
+          >
+            ברוך הבא, {user.username}! 
+          </motion.div>
+        )}
       </motion.div>
 
       <motion.div 
@@ -100,6 +141,7 @@ const Index = () => {
                 <Button
                   variant="secondary"
                   onClick={() => {
+                    saveToHistory(query, response);
                     toast.success("הניתוח נשמר בהיסטוריה");
                   }}
                   className="hover-lift"

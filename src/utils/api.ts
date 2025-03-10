@@ -14,7 +14,7 @@ const openaiAPI = axios.create({
   },
 });
 
-// Function to get legal analysis from OpenAI
+// Function to get legal analysis from OpenAI with improved prompting
 export const getLegalAnalysis = async (query: string) => {
   try {
     const prompt = `
@@ -33,7 +33,10 @@ export const getLegalAnalysis = async (query: string) => {
 
     const { data } = await openaiAPI.post("/chat/completions", {
       model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
+      messages: [
+        { role: "system", content: "אתה עוזר משפטי המסביר חוקים בצורה ברורה." },
+        { role: "user", content: prompt }
+      ],
       temperature: 0.2,
       max_tokens: 1000,
     });
