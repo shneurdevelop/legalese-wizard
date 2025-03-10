@@ -4,8 +4,14 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { getLegalAnalysis, saveToHistory } from "@/utils/api";
-import { Search, Save, LogIn } from "lucide-react";
+import { 
+  getLegalAnalysis, 
+  saveToHistory, 
+  getUserDetails, 
+  findRelevantLaws
+} from "@/utils/api";
+import { getCachedLawsData } from "@/utils/lawsFetcher";
+import { Search, Save, LogIn, UserCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 
@@ -14,6 +20,7 @@ const Index = () => {
   const [response, setResponse] = useState("");
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [lawsData, setLawsData] = useState<any>(null);
 
   useEffect(() => {
     // Check if user is logged in
@@ -25,6 +32,13 @@ const Index = () => {
         console.error("Error parsing user data:", e);
       }
     }
+
+    // Try to load cached laws data
+    const cachedLaws = getCachedLawsData();
+    if (cachedLaws) {
+      setLawsData(cachedLaws);
+      console.log("Loaded laws from cache");
+    }
   }, []);
 
   const handleSearch = async () => {
@@ -35,7 +49,15 @@ const Index = () => {
 
     setLoading(true);
     try {
-      const result = await getLegalAnalysis(query);
+      // Find relevant laws from our data
+      let relevantLaws = "";
+      if (lawsData) {
+        relevantLaws = findRelevantLaws(query, lawsData);
+        console.log("Found relevant laws:", relevantLaws.length > 0);
+      }
+
+      // Get analysis from OpenAI with relevant laws (if found)
+      const result = await getLegalAnalysis(query, relevantLaws);
       setResponse(result);
       saveToHistory(query, result);
       toast.success("הניתוח המשפטי הושלם");
@@ -45,6 +67,11 @@ const Index = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSearch();
   };
 
   return (
@@ -73,7 +100,7 @@ const Index = () => {
             <Link to="/login">
               <Button variant="outline" className="gap-2">
                 <LogIn className="w-4 h-4" />
-                התחבר למערכת
+                התחבר למערכת לחוויה מותאמת אישית
               </Button>
             </Link>
           </motion.div>
@@ -84,8 +111,9 @@ const Index = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="mt-4 text-sm text-muted-foreground"
+            className="mt-4 flex items-center justify-center gap-2 text-sm text-primary"
           >
+            <UserCheck className="w-4 h-4" />
             ברוך הבא, {user.username}! 
           </motion.div>
         )}
@@ -98,32 +126,34 @@ const Index = () => {
       >
         <Card className="overflow-hidden border-0 shadow-lg glass-card">
           <CardContent className="p-6">
-            <Textarea
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="תאר את המקרה המשפטי שלך כאן..."
-              className="min-h-[150px] text-lg p-4 bg-white/50 border-0 shadow-inner focus:ring-primary"
-            />
-            <div className="mt-4 flex justify-end">
-              <Button 
-                onClick={handleSearch} 
-                className="hover-lift"
-                size="lg"
-                disabled={loading}
-              >
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <div className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
-                    מנתח...
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <Search className="w-4 h-4" />
-                    נתח מקרה
-                  </span>
-                )}
-              </Button>
-            </div>
+            <form onSubmit={handleSubmit}>
+              <Textarea
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="תאר את המקרה המשפטי שלך כאן..."
+                className="min-h-[150px] text-lg p-4 bg-white/50 border-0 shadow-inner focus:ring-primary"
+              />
+              <div className="mt-4 flex justify-end">
+                <Button 
+                  type="submit"
+                  className="hover-lift"
+                  size="lg"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      מנתח...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Search className="w-4 h-4" />
+                      נתח מקרה
+                    </span>
+                  )}
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
       </motion.div>
