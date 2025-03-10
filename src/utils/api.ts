@@ -1,6 +1,6 @@
 
 import axios from "axios";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 
 // Securely access OpenAI API key (should be in environment variable in production)
 const API_KEY = "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";
