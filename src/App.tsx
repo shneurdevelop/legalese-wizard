@@ -19,7 +19,14 @@ import { useState, useEffect } from "react";
 import { supabase } from "./integrations/supabase/client";
 import { isUserLoggedIn } from "./utils/user";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1
+    }
+  }
+});
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -33,6 +40,15 @@ const App = () => {
       console.log("Auth state changed:", event);
       setIsAuthenticated(!!session);
     });
+
+    // Auto-save the default API key if not already set
+    const apiKey = localStorage.getItem("lawai-openai-key");
+    if (!apiKey) {
+      localStorage.setItem(
+        "lawai-openai-key", 
+        "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"
+      );
+    }
     
     return () => {
       // Clean up the subscription

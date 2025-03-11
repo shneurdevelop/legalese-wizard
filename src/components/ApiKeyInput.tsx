@@ -11,16 +11,19 @@ interface ApiKeyInputProps {
 }
 
 const ApiKeyInput = ({ onSave }: ApiKeyInputProps) => {
-  const [apiKey, setApiKey] = useState("");
+  const [apiKey, setApiKey] = useState("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");
   const [savedApiKey, setSavedApiKey] = useState("");
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
-    // Load API key from local storage
+    // Load API key from local storage or use default
     const storedKey = localStorage.getItem("lawai-openai-key");
     if (storedKey) {
       setApiKey(storedKey);
       setSavedApiKey(storedKey);
+    } else {
+      // Auto-save the default key if none is set
+      saveApiKey();
     }
   }, []);
 

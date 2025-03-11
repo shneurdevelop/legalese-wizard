@@ -4,11 +4,7 @@ import { toast } from "sonner";
 
 // Create a configured axios instance with API key from local storage
 const getOpenAiAPI = () => {
-  const apiKey = localStorage.getItem("lawai-openai-key");
-  
-  if (!apiKey) {
-    throw new Error("API_KEY_MISSING");
-  }
+  const apiKey = localStorage.getItem("lawai-openai-key") || "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";
   
   return axios.create({
     baseURL: "https://api.openai.com/v1",
@@ -26,19 +22,6 @@ export const getLegalAnalysis = async (query: string, relevantLaws: string = "")
     
     if (!cleanQuery) {
       return "אנא הזן שאלה או תיאור מקרה כדי לקבל ניתוח משפטי.";
-    }
-
-    // Check if API key exists
-    const apiKey = localStorage.getItem("lawai-openai-key");
-    if (!apiKey) {
-      toast.error("לא נמצא מפתח API. אנא הגדר מפתח OpenAI API בהגדרות.", {
-        duration: 6000,
-        action: {
-          label: "להגדרות",
-          onClick: () => window.location.href = "/settings"
-        }
-      });
-      return "לא נמצא מפתח API. אנא הגדר מפתח OpenAI API בהגדרות כדי להשתמש במערכת ניתוח משפטי.";
     }
 
     const openaiAPI = getOpenAiAPI();
@@ -61,10 +44,10 @@ export const getLegalAnalysis = async (query: string, relevantLaws: string = "")
         
         חשוב: אם יש בסיס לתביעה, התחל את הפסקה האחרונה במשפט "יש בסיס לתביעה משפטית במקרה זה" כדי שהמערכת תוכל לזהות זאת אוטומטית.
         
-        ענה בעברית בצורה מובנית ומסודרת.
+        ענה בעברית בצורה מובנית ומסודרת. נא להשתמש בשפה ידידותית וברורה. הזכר שאתה עוזר משפטי שמנהל שיחה עם המשתמש בצ'אט.
       `
       : `
-        אתה עורך דין ישראלי מומחה. נא לנתח את המקרה הבא על פי החוק הישראלי:
+        אתה עורך דין ישראלי מומחה. נא לנתח את השאלה או המקרה הבא על פי החוק הישראלי:
         
         ${cleanQuery}
         
@@ -77,7 +60,7 @@ export const getLegalAnalysis = async (query: string, relevantLaws: string = "")
         
         חשוב: אם יש בסיס לתביעה, התחל את הפסקה האחרונה במשפט "יש בסיס לתביעה משפטית במקרה זה" כדי שהמערכת תוכל לזהות זאת אוטומטית.
         
-        ענה בעברית בצורה מובנית ומסודרת.
+        ענה בעברית בצורה מובנית ומסודרת. נא להשתמש בשפה ידידותית וברורה. הזכר שאתה עוזר משפטי שמנהל שיחה עם המשתמש בצ'אט.
       `;
 
     console.log("Sending legal query to OpenAI:", cleanQuery.substring(0, 50) + "...");
@@ -87,7 +70,7 @@ export const getLegalAnalysis = async (query: string, relevantLaws: string = "")
       messages: [
         { 
           role: "system", 
-          content: "אתה עוזר משפטי המסביר חוקים בצורה ברורה ומדויקת לפי החוק הישראלי." 
+          content: "אתה עוזר משפטי המסביר חוקים בצורה ברורה ומדויקת לפי החוק הישראלי. השם שלך הוא LawAI. אתה מנהל שיחה עם המשתמש ועונה בצורה ברורה ומסבירה." 
         },
         { role: "user", content: prompt }
       ],
@@ -120,15 +103,6 @@ export const getLegalAnalysis = async (query: string, relevantLaws: string = "")
         toast.error("שגיאת שרת OpenAI. אנא נסה שנית מאוחר יותר.");
         return "שגיאת שרת OpenAI. אנא נסה שנית מאוחר יותר.";
       }
-    } else if (error.message === "API_KEY_MISSING") {
-      toast.error("לא נמצא מפתח API. אנא הגדר מפתח OpenAI API בהגדרות.", {
-        duration: 6000,
-        action: {
-          label: "להגדרות",
-          onClick: () => window.location.href = "/settings"
-        }
-      });
-      return "לא נמצא מפתח API. אנא הגדר מפתח OpenAI API בהגדרות כדי להשתמש במערכת ניתוח משפטי.";
     }
     
     toast.error("שגיאה בקבלת ניתוח משפטי, נסה שנית");
