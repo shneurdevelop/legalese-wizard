@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Key, Save, User, Shield, RotateCw } from "lucide-react";
+import { Key, Save, User, Shield, RotateCw, CheckCircle } from "lucide-react";
 import { getUserDetails } from "@/utils/user";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -15,6 +15,7 @@ const Settings = () => {
   const [savedApiKey, setSavedApiKey] = useState("");
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
     // Load API key from local storage
@@ -52,6 +53,11 @@ const Settings = () => {
     try {
       localStorage.setItem("lawai-openai-key", apiKey);
       setSavedApiKey(apiKey);
+      
+      // Show success animation
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
+      
       toast.success("מפתח ה-API נשמר בהצלחה");
     } catch (error) {
       console.error("Error saving API key:", error);
@@ -122,39 +128,55 @@ const Settings = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-2 border-primary/20 shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Key className="h-5 w-5 text-primary" />
-              מפתח OpenAI API
+              הגדרת מפתח OpenAI API
             </CardTitle>
             <CardDescription>
-              נדרש לשימוש במערכת הניתוח המשפטי. 
-              <a 
-                href="https://platform.openai.com/api-keys" 
-                target="_blank" 
-                rel="noreferrer"
-                className="text-primary hover:underline mr-1"
-              >
-                לחץ כאן לקבלת מפתח API
-              </a>
+              <div className="text-amber-600 font-medium mb-1">נדרש לשימוש במערכת הניתוח המשפטי</div>
+              <div>
+                המפתח דרוש כדי לבצע ניתוח של המקרים המשפטיים ויצירת מסמכים באמצעות בינה מלאכותית.
+                <a 
+                  href="https://platform.openai.com/api-keys" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="text-primary hover:underline mr-1 block mt-1 font-medium"
+                >
+                  לחץ כאן לקבלת מפתח API מאתר OpenAI
+                </a>
+              </div>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="apiKey">מפתח API</Label>
+              <Label htmlFor="apiKey" className="text-base font-medium">מפתח API</Label>
               <div className="flex gap-2">
                 <Input
                   id="apiKey"
                   type="password"
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="הזן את מפתח ה-API שלך..."
+                  placeholder="הזן את מפתח ה-API שלך כאן..."
                   className="flex-1"
                 />
-                <Button onClick={saveApiKey}>
-                  <Save className="h-4 w-4 ml-2" />
-                  שמור
+                <Button 
+                  onClick={saveApiKey} 
+                  className="relative gap-2"
+                  disabled={saveSuccess}
+                >
+                  {saveSuccess ? (
+                    <>
+                      <CheckCircle className="h-5 w-5 text-green-100" />
+                      <span>נשמר!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 ml-2" />
+                      שמור
+                    </>
+                  )}
                 </Button>
               </div>
               {savedApiKey && (
