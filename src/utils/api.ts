@@ -82,3 +82,18 @@ export function findRelevantLaws(query: string, lawsData: any): string {
   
   return relevantLawsText;
 }
+
+// Add hasGroundsForLawsuit function to check if there are grounds for a lawsuit
+export function hasGroundsForLawsuit(response: string): boolean {
+  if (!response) return false;
+  
+  const lowerResponse = response.toLowerCase();
+  const positiveIndicators = [
+    'יש עילה', 'קיימת עילה', 'יש עילת תביעה', 'קיימת עילת תביעה',
+    'יש בסיס לתביעה', 'קיים בסיס לתביעה', 'ניתן לתבוע', 'אפשר לתבוע',
+    'יש אפשרות לתבוע', 'מומלץ לתבוע', 'כדאי לתבוע', 'שווה לתבוע',
+    'הפרה של החוק', 'הפרת חוק', 'עבירה על החוק', 'זכאי לפיצוי'
+  ];
+  
+  return positiveIndicators.some(indicator => lowerResponse.includes(indicator));
+}

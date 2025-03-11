@@ -2,29 +2,17 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { Key, Save, User, Shield, RotateCw, CheckCircle } from "lucide-react";
+import { User, Shield, RotateCw } from "lucide-react";
 import { getUserDetails } from "@/utils/user";
 import { supabase } from "@/integrations/supabase/client";
+import ApiKeyInput from "@/components/ApiKeyInput";
 
 const Settings = () => {
-  const [apiKey, setApiKey] = useState("");
-  const [savedApiKey, setSavedApiKey] = useState("");
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
-    // Load API key from local storage
-    const storedKey = localStorage.getItem("lawai-openai-key");
-    if (storedKey) {
-      setApiKey(storedKey);
-      setSavedApiKey(storedKey);
-    }
-
     loadUserProfile();
   }, []);
 
@@ -47,28 +35,6 @@ const Settings = () => {
       }
     }
     setIsLoading(false);
-  };
-
-  const saveApiKey = () => {
-    try {
-      localStorage.setItem("lawai-openai-key", apiKey);
-      setSavedApiKey(apiKey);
-      
-      // Show success animation
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 2000);
-      
-      toast.success("מפתח ה-API נשמר בהצלחה");
-    } catch (error) {
-      console.error("Error saving API key:", error);
-      toast.error("שגיאה בשמירת מפתח ה-API");
-    }
-  };
-
-  const maskApiKey = (key: string) => {
-    if (!key) return "";
-    if (key.length <= 8) return "*".repeat(key.length);
-    return key.substring(0, 4) + "*".repeat(key.length - 8) + key.substring(key.length - 4);
   };
 
   return (
@@ -131,7 +97,7 @@ const Settings = () => {
         <Card className="border-2 border-primary/20 shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5 text-primary" />
+              <Shield className="h-5 w-5 text-primary" />
               הגדרת מפתח OpenAI API
             </CardTitle>
             <CardDescription>
@@ -150,41 +116,7 @@ const Settings = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="apiKey" className="text-base font-medium">מפתח API</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="apiKey"
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="הזן את מפתח ה-API שלך כאן..."
-                  className="flex-1"
-                />
-                <Button 
-                  onClick={saveApiKey} 
-                  className="relative gap-2"
-                  disabled={saveSuccess}
-                >
-                  {saveSuccess ? (
-                    <>
-                      <CheckCircle className="h-5 w-5 text-green-100" />
-                      <span>נשמר!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 ml-2" />
-                      שמור
-                    </>
-                  )}
-                </Button>
-              </div>
-              {savedApiKey && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  מפתח שמור: {maskApiKey(savedApiKey)}
-                </p>
-              )}
-            </div>
+            <ApiKeyInput />
             
             <div className="rounded-lg bg-secondary/50 p-4 text-sm">
               <div className="flex items-start gap-2">
