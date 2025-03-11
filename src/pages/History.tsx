@@ -4,33 +4,102 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { getHistoryItems } from "@/utils/api";
-import { Trash2, FileText, Clock } from "lucide-react";
+import { getHistoryItems, getUserDetails } from "@/utils/api";
+import { getHistoryItemsFromSupabase, clearHistoryFromSupabase, deleteChatSession } from "@/utils/supabase";
+import { Trash2, FileText, Clock, RotateCw, MessageSquare, Bot } from "lucide-react";
 import { toast } from "sonner";
+import { isUserLoggedIn } from "@/utils/user";
+import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const History = () => {
   const [historyItems, setHistoryItems] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
     loadHistory();
+    
+    // Set up auth state listener
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        loadHistory();
+      }
+    });
+    
+    return () => {
+      // Clean up the subscription
+      if (authListener && authListener.subscription) {
+        authListener.subscription.unsubscribe();
+      }
+    };
   }, []);
 
-  const loadHistory = () => {
+  const loadHistory = async () => {
+    setIsLoading(true);
+    
+    // Check if user is logged in
+    const isLoggedIn = isUserLoggedIn();
+    const userDetails = getUserDetails();
+    setUser(userDetails);
+    
+    if (isLoggedIn && userDetails?.id) {
+      // Get history from Supabase
+      const supabaseHistory = await getHistoryItemsFromSupabase(userDetails.id);
+      if (supabaseHistory.length > 0) {
+        setHistoryItems(supabaseHistory);
+        setIsLoading(false);
+        return;
+      }
+    }
+    
+    // Fallback to local storage
     const items = getHistoryItems();
-    setHistoryItems(items);
+    setHistoryItems(items.map(item => ({
+      id: item.id,
+      title: item.query.substring(0, 50) + (item.query.length > 50 ? '...' : ''),
+      created_at: item.date,
+      messages: [
+        { content: item.query, is_ai: false, created_at: item.date },
+        { content: item.response, is_ai: true, created_at: item.date }
+      ]
+    })));
+    
+    setIsLoading(false);
   };
 
-  const clearHistory = () => {
-    localStorage.setItem("lawai-history", "[]");
-    setHistoryItems([]);
-    toast.success("ההיסטוריה נמחקה בהצלחה");
+  const clearHistory = async () => {
+    if (user?.id) {
+      const success = await clearHistoryFromSupabase(user.id);
+      if (success) {
+        setHistoryItems([]);
+        toast.success("ההיסטוריה נמחקה בהצלחה");
+      } else {
+        toast.error("שגיאה במחיקת ההיסטוריה");
+      }
+    } else {
+      localStorage.setItem("lawai-history", "[]");
+      setHistoryItems([]);
+      toast.success("ההיסטוריה נמחקה בהצלחה");
+    }
   };
 
-  const deleteHistoryItem = (id: number) => {
-    const updatedItems = historyItems.filter(item => item.id !== id);
-    localStorage.setItem("lawai-history", JSON.stringify(updatedItems));
-    setHistoryItems(updatedItems);
-    toast.success("הפריט נמחק מההיסטוריה");
+  const deleteHistoryItem = async (id: string) => {
+    if (user?.id) {
+      const success = await deleteChatSession(id, user.id);
+      if (success) {
+        setHistoryItems(historyItems.filter(item => item.id !== id));
+        toast.success("הפריט נמחק מההיסטוריה");
+      } else {
+        toast.error("שגיאה במחיקת הפריט");
+      }
+    } else {
+      // Legacy local storage approach
+      const updatedItems = historyItems.filter(item => item.id !== id);
+      localStorage.setItem("lawai-history", JSON.stringify(updatedItems));
+      setHistoryItems(updatedItems);
+      toast.success("הפריט נמחק מההיסטוריה");
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -67,7 +136,7 @@ const History = () => {
         transition={{ duration: 0.5, delay: 0.2 }}
         className="flex justify-end mb-4"
       >
-        {historyItems.length > 0 && (
+        {!isLoading && historyItems.length > 0 && (
           <Button variant="outline" onClick={clearHistory} className="hover-lift">
             <Trash2 className="mr-2 h-4 w-4" />
             נקה היסטוריה
@@ -76,7 +145,34 @@ const History = () => {
       </motion.div>
 
       <AnimatePresence>
-        {historyItems.length === 0 ? (
+        {isLoading ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="space-y-4"
+          >
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="glass-card">
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-center">
+                    <Skeleton className="h-6 w-48" />
+                    <div className="flex space-x-2 space-x-reverse">
+                      <Skeleton className="h-8 w-8 rounded" />
+                      <Skeleton className="h-8 w-8 rounded" />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </motion.div>
+        ) : historyItems.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -107,7 +203,7 @@ const History = () => {
                   <CardHeader className="pb-2">
                     <div className="flex justify-between items-center">
                       <CardTitle className="text-lg font-medium">
-                        חיפוש מיום {formatDate(item.date)}
+                        חיפוש מיום {formatDate(item.created_at)}
                       </CardTitle>
                       <div className="flex space-x-2 space-x-reverse">
                         <Button
@@ -131,24 +227,25 @@ const History = () => {
                   </CardHeader>
                   <CardContent>
                     <Accordion type="single" collapsible className="w-full">
-                      <AccordionItem value="query" className="border-0">
-                        <AccordionTrigger className="py-2 text-right">
-                          <span className="font-semibold">השאילתה</span>
-                        </AccordionTrigger>
-                        <AccordionContent className="bg-white/50 p-3 rounded-md">
-                          {item.query}
-                        </AccordionContent>
-                      </AccordionItem>
-                      <AccordionItem value="response" className="border-0">
-                        <AccordionTrigger className="py-2 text-right">
-                          <span className="font-semibold">התשובה</span>
-                        </AccordionTrigger>
-                        <AccordionContent className="bg-white/50 p-3 rounded-md">
-                          <div className="whitespace-pre-line">
-                            {item.response}
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
+                      {item.messages && item.messages.map((message: any, i: number) => (
+                        <AccordionItem key={i} value={`message-${i}`} className="border-0">
+                          <AccordionTrigger className="py-2 text-right flex gap-2">
+                            {message.is_ai ? (
+                              <Bot className="h-4 w-4 text-blue-500" />
+                            ) : (
+                              <MessageSquare className="h-4 w-4 text-green-500" />
+                            )}
+                            <span className="font-semibold">
+                              {message.is_ai ? "תשובת המערכת" : "השאילתה שלך"}
+                            </span>
+                          </AccordionTrigger>
+                          <AccordionContent className="bg-white/50 p-3 rounded-md">
+                            <div className="whitespace-pre-line">
+                              {message.content}
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
                     </Accordion>
                   </CardContent>
                 </Card>

@@ -2,14 +2,22 @@
 import axios from "axios";
 import { toast } from "sonner";
 
-// Create a configured axios instance
-const openaiAPI = axios.create({
-  baseURL: "https://api.openai.com/v1",
-  headers: {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${process.env.OPENAI_API_KEY || "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"}`,
-  },
-});
+// Create a configured axios instance with API key from local storage
+const getOpenAiAPI = () => {
+  const apiKey = localStorage.getItem("lawai-openai-key");
+  
+  if (!apiKey) {
+    throw new Error("API_KEY_MISSING");
+  }
+  
+  return axios.create({
+    baseURL: "https://api.openai.com/v1",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+  });
+};
 
 // Function to get legal analysis from OpenAI with improved prompting
 export const getLegalAnalysis = async (query: string, relevantLaws: string = "") => {
@@ -20,6 +28,21 @@ export const getLegalAnalysis = async (query: string, relevantLaws: string = "")
       return "אנא הזן שאלה או תיאור מקרה כדי לקבל ניתוח משפטי.";
     }
 
+    // Check if API key exists
+    const apiKey = localStorage.getItem("lawai-openai-key");
+    if (!apiKey) {
+      toast.error("לא נמצא מפתח API. אנא הגדר מפתח OpenAI API בהגדרות.", {
+        duration: 6000,
+        action: {
+          label: "להגדרות",
+          onClick: () => window.location.href = "/settings"
+        }
+      });
+      return "לא נמצא מפתח API. אנא הגדר מפתח OpenAI API בהגדרות כדי להשתמש במערכת ניתוח משפטי.";
+    }
+
+    const openaiAPI = getOpenAiAPI();
+    
     const prompt = relevantLaws 
       ? `
         אתה עורך דין ישראלי מומחה. נא לנתח את המקרה הבא על פי החוק הישראלי:
@@ -34,6 +57,7 @@ export const getLegalAnalysis = async (query: string, relevantLaws: string = "")
         2. ניתוח משפטי קצר ופשוט להבנה
         3. המלצות לפעולה מבוססות על החוק
         4. אם רלוונטי, הפנייה לתקדימים או פסקי דין חשובים
+        5. האם יש בסיס לתביעה משפטית. אם כן, ציין זאת בבירור וספק מידע רלוונטי להכנת התביעה.
         
         ענה בעברית בצורה מובנית ומסודרת.
       `
@@ -47,6 +71,7 @@ export const getLegalAnalysis = async (query: string, relevantLaws: string = "")
         2. ניתוח משפטי קצר ופשוט להבנה
         3. המלצות לפעולה מבוססות על החוק
         4. אם רלוונטי, הפנייה לתקדימים או פסקי דין חשובים
+        5. האם יש בסיס לתביעה משפטית. אם כן, ציין זאת בבירור וספק מידע רלוונטי להכנת התביעה.
         
         ענה בעברית בצורה מובנית ומסודרת.
       `;
@@ -68,7 +93,7 @@ export const getLegalAnalysis = async (query: string, relevantLaws: string = "")
 
     console.log("Received response from OpenAI");
     return data.choices[0].message.content;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching legal analysis:", error);
     
     // More detailed error handling
@@ -76,8 +101,14 @@ export const getLegalAnalysis = async (query: string, relevantLaws: string = "")
       const status = error.response.status;
       
       if (status === 401) {
-        toast.error("שגיאת אימות API. אנא בדוק את מפתח ה-API שלך.");
-        return "שגיאת אימות API. אנא פנה למנהל המערכת.";
+        toast.error("מפתח ה-API שגוי או לא תקף. אנא בדוק את מפתח ה-API בהגדרות.", {
+          duration: 6000,
+          action: {
+            label: "להגדרות",
+            onClick: () => window.location.href = "/settings"
+          }
+        });
+        return "מפתח ה-API שגוי או לא תקף. אנא בדוק את מפתח ה-API בהגדרות.";
       } else if (status === 429) {
         toast.error("חריגה ממגבלת בקשות API. אנא נסה שנית בעוד מספר דקות.");
         return "חריגה ממגבלת בקשות API. אנא נסה שנית בעוד מספר דקות.";
@@ -85,6 +116,15 @@ export const getLegalAnalysis = async (query: string, relevantLaws: string = "")
         toast.error("שגיאת שרת OpenAI. אנא נסה שנית מאוחר יותר.");
         return "שגיאת שרת OpenAI. אנא נסה שנית מאוחר יותר.";
       }
+    } else if (error.message === "API_KEY_MISSING") {
+      toast.error("לא נמצא מפתח API. אנא הגדר מפתח OpenAI API בהגדרות.", {
+        duration: 6000,
+        action: {
+          label: "להגדרות",
+          onClick: () => window.location.href = "/settings"
+        }
+      });
+      return "לא נמצא מפתח API. אנא הגדר מפתח OpenAI API בהגדרות כדי להשתמש במערכת ניתוח משפטי.";
     }
     
     toast.error("שגיאה בקבלת ניתוח משפטי, נסה שנית");
@@ -92,40 +132,30 @@ export const getLegalAnalysis = async (query: string, relevantLaws: string = "")
   }
 };
 
-// Function to find relevant laws for a query
-export const findRelevantLaws = (query: string, lawsData: any) => {
-  if (!lawsData || Object.keys(lawsData).length === 0) {
-    return "";
-  }
+// Function to determine if legal response has grounds for lawsuit
+export const hasGroundsForLawsuit = (response: string): boolean => {
+  const lowerResponse = response.toLowerCase();
+  
+  // Hebrew phrases that might indicate grounds for lawsuit
+  const positiveIndicators = [
+    "יש בסיס לתביעה",
+    "קיים בסיס לתביעה",
+    "ניתן להגיש תביעה",
+    "יש עילת תביעה",
+    "קיימת עילת תביעה",
+    "מומלץ להגיש תביעה",
+    "יש מקום לתביעה",
+    "יש אפשרות לתבוע",
+    "כדאי לשקול תביעה",
+    "תביעה אפשרית",
+    "אפשר לתבוע"
+  ];
+  
+  return positiveIndicators.some(phrase => lowerResponse.includes(phrase));
+};
 
-  const queryWords = query.toLowerCase().split(/\s+/);
-  const relevantLaws: string[] = [];
-
-  // Search laws for relevant content
-  Object.entries(lawsData).forEach(([category, laws]: [string, any]) => {
-    Object.entries(laws).forEach(([lawName, sections]: [string, any]) => {
-      let lawIsRelevant = false;
-      let relevantSections: string[] = [];
-
-      // Check if law name is relevant
-      if (queryWords.some(word => lawName.toLowerCase().includes(word) && word.length > 2)) {
-        lawIsRelevant = true;
-      }
-
-      // Check if any section is relevant
-      Object.entries(sections).forEach(([sectionId, content]: [string, any]) => {
-        if (typeof content === 'string' && 
-            queryWords.some(word => content.toLowerCase().includes(word) && word.length > 2)) {
-          lawIsRelevant = true;
-          relevantSections.push(`${sectionId}: ${content}`);
-        }
-      });
-
-      if (lawIsRelevant) {
-        relevantLaws.push(`חוק: ${lawName}\n${relevantSections.join('\n')}`);
-      }
-    });
-  });
-
-  return relevantLaws.join('\n\n').slice(0, 3000); // Limit length to avoid token limits
+// Function to check if API key exists
+export const hasOpenAIApiKey = (): boolean => {
+  const apiKey = localStorage.getItem("lawai-openai-key");
+  return !!apiKey && apiKey.length > 10; // Basic validation
 };
