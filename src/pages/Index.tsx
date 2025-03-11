@@ -8,12 +8,14 @@ import {
   getLegalAnalysis, 
   saveToHistory, 
   getUserDetails, 
-  findRelevantLaws
+  findRelevantLaws,
+  hasGroundsForLawsuit
 } from "@/utils/api";
 import { fetchLaws, parseLawsFromHtml, cacheLawsData, getCachedLawsData } from "@/utils/lawsFetcher";
-import { Search, Save, LogIn, UserCheck, Loader2, BookOpen } from "lucide-react";
+import { Search, Save, LogIn, UserCheck, Loader2, BookOpen, FileText } from "lucide-react";
 import { toast } from "sonner";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import Logo from "@/components/Logo";
 
 const Index = () => {
   const [query, setQuery] = useState("");
@@ -22,6 +24,7 @@ const Index = () => {
   const [user, setUser] = useState<any>(null);
   const [lawsData, setLawsData] = useState<any>(null);
   const [loadingLaws, setLoadingLaws] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Check if user is logged in
@@ -84,7 +87,22 @@ const Index = () => {
       const result = await getLegalAnalysis(query, relevantLaws);
       setResponse(result);
       saveToHistory(query, result);
+      
+      // Check if there are grounds for lawsuit
+      const hasGrounds = hasGroundsForLawsuit(result);
+      
       toast.success("הניתוח המשפטי הושלם");
+      
+      // If there are grounds for lawsuit, show a toast with option to create document
+      if (hasGrounds) {
+        toast.info("נמצא בסיס אפשרי לתביעה", {
+          duration: 6000,
+          action: {
+            label: "צור מסמך",
+            onClick: () => navigate("/documents", { state: { analysis: result, query } })
+          }
+        });
+      }
     } catch (error) {
       console.error("Error in legal analysis:", error);
       toast.error("שגיאה בניתוח המשפטי");
@@ -109,7 +127,10 @@ const Index = () => {
         <div className="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-sm mb-2">
           הניתוח המשפטי החכם בישראל
         </div>
-        <h1 className="text-4xl font-bold mb-2">מערכת LawAi לניתוח משפטי</h1>
+        <div className="flex justify-center mb-4">
+          <Logo size="md" />
+        </div>
+        <h1 className="text-4xl font-bold mb-2">מערכת לניתוח משפטי</h1>
         <p className="text-lg text-muted-foreground">
           הזן את המקרה שלך וקבל ניתוח משפטי מבוסס בינה מלאכותית
         </p>
@@ -208,17 +229,30 @@ const Index = () => {
             <CardContent className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold">ניתוח משפטי</h2>
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    saveToHistory(query, response);
-                    toast.success("הניתוח נשמר בהיסטוריה");
-                  }}
-                  className="hover-lift"
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  שמור
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      saveToHistory(query, response);
+                      toast.success("הניתוח נשמר בהיסטוריה");
+                    }}
+                    className="hover-lift"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    שמור
+                  </Button>
+                  
+                  {hasGroundsForLawsuit(response) && (
+                    <Button
+                      variant="default"
+                      onClick={() => navigate("/documents", { state: { analysis: response, query } })}
+                      className="hover-lift"
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      צור מסמך
+                    </Button>
+                  )}
+                </div>
               </div>
               <div className="whitespace-pre-line bg-white/50 p-4 rounded-lg text-foreground/90">
                 {response}

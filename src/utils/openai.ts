@@ -59,6 +59,8 @@ export const getLegalAnalysis = async (query: string, relevantLaws: string = "")
         4. אם רלוונטי, הפנייה לתקדימים או פסקי דין חשובים
         5. האם יש בסיס לתביעה משפטית. אם כן, ציין זאת בבירור וספק מידע רלוונטי להכנת התביעה.
         
+        חשוב: אם יש בסיס לתביעה, התחל את הפסקה האחרונה במשפט "יש בסיס לתביעה משפטית במקרה זה" כדי שהמערכת תוכל לזהות זאת אוטומטית.
+        
         ענה בעברית בצורה מובנית ומסודרת.
       `
       : `
@@ -72,6 +74,8 @@ export const getLegalAnalysis = async (query: string, relevantLaws: string = "")
         3. המלצות לפעולה מבוססות על החוק
         4. אם רלוונטי, הפנייה לתקדימים או פסקי דין חשובים
         5. האם יש בסיס לתביעה משפטית. אם כן, ציין זאת בבירור וספק מידע רלוונטי להכנת התביעה.
+        
+        חשוב: אם יש בסיס לתביעה, התחל את הפסקה האחרונה במשפט "יש בסיס לתביעה משפטית במקרה זה" כדי שהמערכת תוכל לזהות זאת אוטומטית.
         
         ענה בעברית בצורה מובנית ומסודרת.
       `;
@@ -132,12 +136,15 @@ export const getLegalAnalysis = async (query: string, relevantLaws: string = "")
   }
 };
 
-// Function to determine if legal response has grounds for lawsuit
+// Function to determine if legal response has grounds for lawsuit - improved with more indicators
 export const hasGroundsForLawsuit = (response: string): boolean => {
+  if (!response) return false;
+  
   const lowerResponse = response.toLowerCase();
   
-  // Hebrew phrases that might indicate grounds for lawsuit
+  // Hebrew phrases that might indicate grounds for lawsuit - expanded list
   const positiveIndicators = [
+    "יש בסיס לתביעה משפטית במקרה זה",
     "יש בסיס לתביעה",
     "קיים בסיס לתביעה",
     "ניתן להגיש תביעה",
@@ -146,9 +153,16 @@ export const hasGroundsForLawsuit = (response: string): boolean => {
     "מומלץ להגיש תביעה",
     "יש מקום לתביעה",
     "יש אפשרות לתבוע",
+    "יש לך זכות לתבוע",
     "כדאי לשקול תביעה",
     "תביעה אפשרית",
-    "אפשר לתבוע"
+    "אפשר לתבוע",
+    "עילה לתביעה",
+    "מומלץ לפנות לערכאות",
+    "פנייה לבית המשפט",
+    "הגשת כתב תביעה",
+    "תוכל לתבוע",
+    "יש סיכוי טוב בתביעה"
   ];
   
   return positiveIndicators.some(phrase => lowerResponse.includes(phrase));
